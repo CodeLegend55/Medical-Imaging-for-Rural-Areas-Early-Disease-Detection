@@ -24,7 +24,7 @@ All models are pre-trained on ImageNet and fine-tuned on chest X-ray data for tr
 ## 📁 Project Structure
 
 ```
-medical-imaging-rural-detection/
+Medical-Imaging-for-Rural-Areas-Early-Disease-Detection/
 ├── src/
 │   ├── data/
 │   │   ├── __init__.py
@@ -68,7 +68,7 @@ medical-imaging-rural-detection/
 ```bash
 # Clone the repository
 git clone <repository_url>
-cd medical-imaging-rural-detection
+cd Medical-Imaging-for-Rural-Areas-Early-Disease-Detection
 
 # Create virtual environment (recommended)
 python -m venv venv
