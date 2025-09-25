@@ -11,6 +11,11 @@ This project aims to provide accessible medical imaging solutions for rural area
 - **Pneumonia**: Bacterial/viral pneumonia (non-COVID)
 - **Tuberculosis**: TB infections
 
+## 👥 Team Members
+
+- **Neeraj Tirumalasetty** - [https://github.com/neerajtirumalasetty](https://github.com/neerajtirumalasetty)
+- **Jeevan Rushi** - [https://github.com/jeevanrushi07](https://github.com/jeevanrushi07)
+
 ## 🏗️ Architecture
 
 The project implements three state-of-the-art CNN architectures:
