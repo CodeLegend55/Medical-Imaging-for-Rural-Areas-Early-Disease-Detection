@@ -60,6 +60,8 @@ Medical-Imaging-for-Rural-Areas-Early-Disease-Detection/
 │   ├── train/
 │   ├── val/
 │   └── test/
+├── colab_setup.ipynb              # 🆕 Google Colab setup notebook
+├── colab_main.py                  # 🆕 Colab-optimized training script
 ├── config.yaml                    # Configuration file
 ├── requirements.txt               # Dependencies
 ├── download_dataset.py           # Dataset download utility
@@ -68,7 +70,35 @@ Medical-Imaging-for-Rural-Areas-Early-Disease-Detection/
 
 ## 🚀 Quick Start
 
-### 1. Environment Setup
+### Option 1: Google Colab (Recommended - Free GPU!) 🔥
+
+For users without powerful hardware, we provide a complete Google Colab setup with **free GPU access**:
+
+1. **Upload to Google Drive:**
+   - Download/clone this repository
+   - Upload the entire folder to your Google Drive
+
+2. **Open Google Colab:**
+   - Go to [colab.research.google.com](https://colab.research.google.com)
+   - Upload and open `colab_setup.ipynb`
+
+3. **Enable GPU:**
+   - Runtime → Change runtime type → Hardware accelerator → **GPU**
+   - Select GPU type → **T4** (free tier)
+
+4. **Run the notebook:**
+   - Update the Google Drive path in the notebook
+   - Run all cells sequentially
+   - The notebook will automatically train all models!
+
+**Colab Advantages:**
+- ✅ Free Tesla T4 GPU (~16GB VRAM)
+- ✅ Pre-installed PyTorch and dependencies
+- ✅ No local setup required
+- ✅ Automatic model saving to Drive
+- ✅ ~12 hours of continuous GPU usage
+
+### Option 2: Local Environment Setup
 
 ```bash
 # Clone the repository
@@ -83,7 +113,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Dataset Download
+### Dataset Download
 
 The project uses the [Chest X-Ray Images (Pneumonia/COVID19/Tuberculosis)](https://www.kaggle.com/datasets/jtiptj/chest-xray-pneumoniacovid19tuberculosis) dataset from Kaggle.
 
@@ -100,16 +130,23 @@ The project uses the [Chest X-Ray Images (Pneumonia/COVID19/Tuberculosis)](https
 python download_dataset.py
 ```
 
-### 3. Training Models
+### Training Models
 
+#### Option 1: Google Colab (Easy!)
+Simply run the `colab_setup.ipynb` notebook - it handles everything automatically!
+
+#### Option 2: Local Training
 ```bash
 # Train all models (ResNet50, DenseNet121, EfficientNet)
 python src/main.py
 
+# Or use the Colab-optimized script locally
+python colab_main.py
+
 # Or train individual models by modifying the main.py file
 ```
 
-### 4. Configuration
+### Configuration
 
 Modify `config.yaml` to adjust:
 - Training parameters (batch size, learning rate, epochs)
@@ -155,9 +192,35 @@ The project evaluates models using:
 - **Learning Rate Scheduling**: StepLR with gamma=0.1, step_size=7
 - **Early Stopping**: Based on validation accuracy
 
+### Colab Optimizations 🚀
+- **Batch Size**: Increased to 32 (leveraging GPU memory)
+- **Data Loading**: Multi-worker data loading for efficiency
+- **Memory Management**: Optimized for Colab's T4 GPU
+- **Progress Tracking**: Real-time training progress bars
+- **Auto-saving**: Models automatically saved to Google Drive
+
 ## 📈 Usage Examples
 
-### Training Custom Model
+### Google Colab Usage (Easiest!)
+1. Upload `colab_setup.ipynb` to Google Colab
+2. Enable GPU runtime
+3. Run all cells - everything is automated!
+
+### Training Custom Model (Local/Colab)
+```python
+# Using the Colab-optimized trainer
+from colab_main import ColabModelTrainer, create_model, setup_device
+
+# Setup
+device = setup_device()
+model = create_model('ResNet50', num_classes=4)
+trainer = ColabModelTrainer(model, device, 4)
+
+# Train
+trained_model = trainer.train_model(train_loader, val_loader, num_epochs=25)
+```
+
+### Original Implementation
 ```python
 from src.models.resnet50_model import ResNet50Model
 from src.training.train import ModelTrainer
@@ -191,10 +254,19 @@ This system is designed for:
 
 ## 📋 Requirements
 
-### Hardware
+### Hardware Requirements
+
+#### For Google Colab Users 🎉
+- ✅ **No special hardware needed!**
+- ✅ Free Tesla T4 GPU provided by Google
+- ✅ 12+ GB GPU memory available
+- ✅ Works on any device with internet connection
+
+#### For Local Training
 - **GPU**: NVIDIA GPU with CUDA support (recommended)
 - **RAM**: Minimum 8GB, recommended 16GB+
 - **Storage**: 5GB+ for dataset and models
+- **Internet**: For dataset download and Colab access
 
 ### Software
 - Python 3.8+
@@ -221,11 +293,37 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-For questions and support:
+### Getting Started Issues?
+- **Can't find GPU in Colab?** 
+  - Runtime → Change runtime type → Hardware accelerator → GPU
+- **Dataset loading errors?**
+  - Verify Google Drive path in the Colab notebook
+  - Check dataset folder structure matches expected format
+- **Out of memory errors?**
+  - Reduce batch size in config (try 16 or 8)
+  - Use gradient checkpointing for larger models
+
+### General Support
 - Open an issue on GitHub
-- Check the documentation in `/docs`
-- Review example notebooks in `/notebooks`
+- Check the documentation in `/notebooks`
+- Try the Google Colab setup first - it's the easiest!
+
+### Troubleshooting Colab
+- **Session timeout**: Colab sessions last ~12 hours of inactivity
+- **Reconnect**: If disconnected, just reconnect and continue
+- **Save progress**: Models are auto-saved to your Google Drive
 
 ---
 
 **Made with ❤️ for rural healthcare accessibility**
+
+---
+
+## 🌟 New Features in Colab Version
+
+- 🔥 **Free GPU Training**: No hardware requirements
+- 📱 **Mobile Friendly**: Train models from phone/tablet
+- ☁️ **Cloud Storage**: Auto-save to Google Drive
+- 📊 **Real-time Visualization**: Live training progress
+- 🎯 **One-click Setup**: Everything automated in notebook
+- 💾 **Easy Model Download**: Direct download to local machine
