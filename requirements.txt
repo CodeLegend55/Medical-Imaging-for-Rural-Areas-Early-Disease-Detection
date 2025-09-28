@@ -13,7 +13,6 @@ keras==3.5.0
 
 # Image Processing and Computer Vision
 Pillow==10.4.0
-opencv-python==4.10.0.84
 
 # Scientific Computing and Data Processing
 numpy==1.26.4

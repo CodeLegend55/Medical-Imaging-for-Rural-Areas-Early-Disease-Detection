@@ -183,6 +183,90 @@
             border-left-color: #9b59b6;
         }
 
+        .prediction-card.best-model {
+            border: 2px solid #f39c12;
+            box-shadow: 0 5px 20px rgba(243, 156, 18, 0.3);
+        }
+
+        .xray-type-indicator {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        .xray-type-selection {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+
+        .xray-type-selection h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .radio-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            cursor: pointer;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 10px;
+            margin-top: 5px;
+            transform: scale(1.2);
+        }
+
+        .radio-option input[type="radio"]:checked + .radio-label {
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: #3498db;
+            background: #f0f8ff;
+        }
+
+        .radio-label {
+            flex: 1;
+            font-size: 1.1em;
+            line-height: 1.4;
+        }
+
+        .radio-label small {
+            color: #666;
+            font-weight: normal;
+        }
+
+        @media (max-width: 768px) {
+            .radio-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .prediction-card h3 {
             color: #2c3e50;
             margin-bottom: 15px;
@@ -359,17 +443,39 @@
     <div class="container">
         <div class="header">
             <h1>🏥 Medical Imaging AI System</h1>
-            <p>Advanced multi-modal analysis for chest conditions, fractures, and osteoporosis detection</p>
+            <p>Advanced X-ray analysis with user-selectable model routing for chest conditions, fractures, and osteoporosis detection</p>
         </div>
 
         <div class="main-content">
             <div class="upload-section">
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📱</div>
-                    <div class="upload-text">Drop your medical image here</div>
-                    <div class="upload-subtext">or click to browse (PNG, JPG, JPEG - Max 16MB)</div>
+                    <div class="upload-text">Drop your X-ray image here</div>
+                    <div class="upload-subtext">Select X-ray type and upload your image<br>(PNG, JPG, JPEG - Max 16MB)</div>
                     <input type="file" id="fileInput" accept=".png,.jpg,.jpeg" />
                 </div>
+                
+                <!-- X-ray type selection -->
+                <div class="xray-type-selection" id="xrayTypeSelection" style="display: none;">
+                    <h3>Select X-ray Type:</h3>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="xrayType" value="chest" checked>
+                            <span class="radio-label">
+                                🫁 <strong>Chest X-ray</strong>
+                                <br><small>For COVID-19, Pneumonia, TB detection</small>
+                            </span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="xrayType" value="other">
+                            <span class="radio-label">
+                                🦴 <strong>Bone/Joint X-ray</strong>
+                                <br><small>For fracture and osteoporosis detection</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
                 <button class="btn" onclick="document.getElementById('fileInput').click()">
                     Select Image
                 </button>
@@ -380,8 +486,8 @@
 
             <div class="loading" id="loading">
                 <div class="loading-spinner"></div>
-                <p>Analyzing chest X-ray with multiple AI models...</p>
-                <p><small>This may take a few moments</small></p>
+                <p>Analyzing X-ray with selected model type...</p>
+                <p><small>Processing with appropriate AI models</small></p>
             </div>
 
             <div class="results" id="results">
@@ -410,7 +516,7 @@
             </div>
 
             <div class="warning">
-                ⚠️ <strong>Medical Disclaimer:</strong> This AI analysis is for screening purposes only and should not replace professional medical diagnosis. Always consult with qualified healthcare professionals for final diagnosis and treatment decisions.
+                ⚠️ <strong>Medical Disclaimer:</strong> This AI system uses user-selected model routing for specialized analysis. Results are for screening purposes only and should not replace professional medical diagnosis. Always consult with qualified healthcare professionals for final diagnosis and treatment decisions.
             </div>
         </div>
     </div>
@@ -496,6 +602,9 @@
             };
             reader.readAsDataURL(file);
             
+            // Show X-ray type selection
+            document.getElementById('xrayTypeSelection').style.display = 'block';
+            
             // Enable analyze button
             document.getElementById('analyzeBtn').disabled = false;
             
@@ -509,6 +618,13 @@
                 return;
             }
 
+            // Get selected X-ray type
+            const selectedXrayType = document.querySelector('input[name="xrayType"]:checked')?.value;
+            if (!selectedXrayType) {
+                showError('Please select X-ray type');
+                return;
+            }
+
             // Show loading
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').style.display = 'none';
@@ -517,6 +633,7 @@
             // Create form data
             const formData = new FormData();
             formData.append('file', selectedFile);
+            formData.append('xray_type', selectedXrayType);
 
             // Send request
             fetch('/upload', {
@@ -544,23 +661,64 @@
         }
 
         function displayResults(data) {
+            // Show X-ray type selection result
+            const xrayType = data.routing_info?.xray_type || 'unknown';
+            const modelsUsed = data.routing_info?.models_used || [];
+            
+            // Add X-ray type indicator
+            const ensembleResult = document.getElementById('ensembleResult');
+            const xrayTypeIndicator = document.createElement('div');
+            xrayTypeIndicator.style.marginBottom = '15px';
+            xrayTypeIndicator.style.fontSize = '1.1em';
+            xrayTypeIndicator.style.opacity = '0.9';
+            
+            if (xrayType === 'chest') {
+                xrayTypeIndicator.innerHTML = `🫁 <strong>Chest X-ray selected</strong> - Using specialized chest condition models`;
+                xrayTypeIndicator.style.background = 'rgba(52, 152, 219, 0.2)';
+            } else {
+                xrayTypeIndicator.innerHTML = `🦴 <strong>Bone/Joint X-ray selected</strong> - Using specialized fracture and bone density models`;
+                xrayTypeIndicator.style.background = 'rgba(230, 126, 34, 0.2)';
+            }
+            
+            xrayTypeIndicator.style.padding = '10px 15px';
+            xrayTypeIndicator.style.borderRadius = '8px';
+            xrayTypeIndicator.style.marginBottom = '20px';
+            
             // Show ensemble result
             const ensembleDiagnosis = document.getElementById('ensembleDiagnosis');
             const ensembleConfidence = document.getElementById('ensembleConfidence');
             
             ensembleDiagnosis.textContent = data.ensemble.diagnosis;
-            ensembleConfidence.innerHTML = `Confidence: <strong>${data.ensemble.confidence.toFixed(1)}%</strong>`;
             
-            // Color code based on diagnosis
+            // Show best model information if available
+            let confidenceText = `Confidence: <strong>${data.ensemble.confidence.toFixed(1)}%</strong>`;
+            if (data.routing_info?.best_model) {
+                const bestModel = data.routing_info.best_model;
+                confidenceText += `<br><small>Best model: ${bestModel.name}</small>`;
+            }
+            ensembleConfidence.innerHTML = confidenceText;
+            
+            // Insert X-ray type indicator at the top of ensemble result
+            const existingIndicator = ensembleResult.querySelector('.xray-type-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            xrayTypeIndicator.className = 'xray-type-indicator';
+            ensembleResult.insertBefore(xrayTypeIndicator, ensembleResult.firstChild.nextSibling);
+            
+            // Color code based on diagnosis and X-ray type
             const diagnosisColors = {
                 'COVID19': '#e74c3c',
                 'PNEUMONIA': '#f39c12',
                 'TURBERCULOSIS': '#9b59b6',
-                'NORMAL': '#27ae60'
+                'NORMAL': '#27ae60',
+                'FRACTURE': '#e67e22',
+                'NO_FRACTURE': '#27ae60',
+                'OSTEOPOROSIS': '#9b59b6'
             };
             
-            const ensembleResult = document.getElementById('ensembleResult');
-            ensembleResult.style.background = `linear-gradient(135deg, ${diagnosisColors[data.ensemble.diagnosis] || '#8e44ad'}, #9b59b6)`;
+            const primaryColor = diagnosisColors[data.ensemble.diagnosis] || '#8e44ad';
+            ensembleResult.style.background = `linear-gradient(135deg, ${primaryColor}, #9b59b6)`;
 
             // Show secondary findings if available
             const secondaryFindingsSection = document.getElementById('secondaryFindingsSection');
@@ -611,10 +769,21 @@
                     modelDisplayName = `🫁 ${modelName}`;
                 }
                 
+                // Highlight the best performing model
+                if (data.routing_info?.best_model?.name === modelName) {
+                    cardClass += ' best-model';
+                }
+                
                 card.className = cardClass;
                 
-                card.innerHTML = `
-                    <h3>${modelDisplayName}</h3>
+                let cardHTML = `
+                    <h3>${modelDisplayName}`;
+                
+                if (data.routing_info?.best_model?.name === modelName) {
+                    cardHTML += ` <span style="color: #f39c12; font-size: 0.8em;">⭐ BEST</span>`;
+                }
+                
+                cardHTML += `</h3>
                     <div class="prediction-result">
                         <span class="diagnosis">${prediction.class}</span>
                         <span class="confidence ${confidenceClass}">${prediction.confidence}%</span>
@@ -630,6 +799,7 @@
                     </div>
                 `;
                 
+                card.innerHTML = cardHTML;
                 predictionGrid.appendChild(card);
             });
 
@@ -645,10 +815,14 @@
             document.getElementById('fileInput').value = '';
             document.getElementById('analyzeBtn').disabled = true;
             document.getElementById('results').style.display = 'none';
+            document.getElementById('xrayTypeSelection').style.display = 'none';
+            
+            // Reset X-ray type selection to chest (default)
+            document.querySelector('input[name="xrayType"][value="chest"]').checked = true;
             
             // Reset upload area
             const uploadText = document.querySelector('.upload-text');
-            uploadText.textContent = 'Drop your medical image here';
+            uploadText.textContent = 'Drop your X-ray image here';
             
             // Remove image preview
             const existingPreview = document.getElementById('imagePreview');
