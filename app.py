@@ -30,6 +30,89 @@ except ImportError:
     client = None
     print("⚠️ OpenAI package not available. Using fallback report generation.")
 
+# Fracture Detection Model Classes (from fracture_detection_training.ipynb)
+class FractureResNet50(nn.Module):
+    def __init__(self, num_classes=2):
+        super(FractureResNet50, self).__init__()
+        self.backbone = models.resnet50(weights=None)
+        
+        # Freeze early layers
+        for param in list(self.backbone.parameters())[:-20]:
+            param.requires_grad = False
+        
+        # Replace the final layer
+        self.backbone.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(self.backbone.fc.in_features, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+    
+    def forward(self, x):
+        return self.backbone(x)
+
+class FractureDenseNet121(nn.Module):
+    def __init__(self, num_classes=2):
+        super(FractureDenseNet121, self).__init__()
+        self.backbone = models.densenet121(weights=None)
+        
+        # Freeze early layers
+        for param in list(self.backbone.parameters())[:-20]:
+            param.requires_grad = False
+        
+        # Replace the final layer
+        self.backbone.classifier = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(self.backbone.classifier.in_features, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+    
+    def forward(self, x):
+        return self.backbone(x)
+
+class FractureEfficientNetB0(nn.Module):
+    def __init__(self, num_classes=2):
+        super(FractureEfficientNetB0, self).__init__()
+        try:
+            from efficientnet_pytorch import EfficientNet
+            self.backbone = EfficientNet.from_pretrained('efficientnet-b0', num_classes=1000)  # Load with original classes first
+            
+            # Freeze early layers
+            for param in list(self.backbone.parameters())[:-20]:
+                param.requires_grad = False
+            
+            # Replace the final layer for fracture detection
+            self.backbone._fc = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(self.backbone._fc.in_features, 512),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                nn.Linear(512, num_classes)
+            )
+            
+        except ImportError:
+            # Fallback to torchvision EfficientNet if efficientnet-pytorch is not available
+            self.backbone = models.efficientnet_b0(weights=None)
+            
+            # Freeze early layers
+            for param in list(self.backbone.parameters())[:-20]:
+                param.requires_grad = False
+            
+            # Replace the final layer
+            self.backbone.classifier[1] = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(self.backbone.classifier[1].in_features, 512),
+                nn.ReLU(),
+                nn.Dropout(0.3),
+                nn.Linear(512, num_classes)
+            )
+    
+    def forward(self, x):
+        return self.backbone(x)
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
@@ -41,7 +124,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 CLASSES = config.CLASSES
 FRACTURE_CLASSES = config.FRACTURE_CLASSES
-OSTEOPOROSIS_CLASSES = config.OSTEOPOROSIS_CLASSES
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -75,13 +157,13 @@ class MedicalImagingModel:
     def create_pytorch_model(self, model_name):
         """Create PyTorch model architecture"""
         if model_name == 'resnet50':
-            model = models.resnet50(pretrained=False)
+            model = models.resnet50(weights=None)
             model.fc = nn.Linear(model.fc.in_features, len(CLASSES))
         elif model_name == 'densenet121':
-            model = models.densenet121(pretrained=False)
+            model = models.densenet121(weights=None)
             model.classifier = nn.Linear(model.classifier.in_features, len(CLASSES))
         elif model_name == 'efficientnet_b0':
-            model = models.efficientnet_b0(pretrained=False)
+            model = models.efficientnet_b0(weights=None)
             model.classifier[1] = nn.Linear(model.classifier[1].in_features, len(CLASSES))
         else:
             raise ValueError(f"Unknown PyTorch model: {model_name}")
@@ -103,7 +185,14 @@ class MedicalImagingModel:
             'EfficientNetB0': 'efficientnet_b0'
         }
         
-        # Load PyTorch models
+        # PyTorch fracture detection models
+        pytorch_fracture_model_files = {
+            'Fracture_ResNet50': 'models/fracture_resnet50.pth',
+            'Fracture_DenseNet121': 'models/fracture_densenet121.pth',
+            'Fracture_EfficientNetB0': 'models/fracture_efficientnetb0.pth'
+        }
+        
+        # Load PyTorch chest X-ray models
         for model_key, model_path in pytorch_model_files.items():
             if os.path.exists(model_path):
                 try:
@@ -112,17 +201,41 @@ class MedicalImagingModel:
                     model.to(self.device)
                     model.eval()
                     self.pytorch_models[model_key] = model
-                    print(f"✓ Loaded PyTorch {model_key}")
+                    print(f"✓ Loaded PyTorch chest {model_key}")
                 except Exception as e:
                     print(f"✗ Error loading PyTorch {model_key}: {e}")
             else:
                 print(f"✗ PyTorch model file not found: {model_path}")
         
-        # TensorFlow models for fracture and osteoporosis detection
+        # Load PyTorch fracture detection models
+        for model_key, model_path in pytorch_fracture_model_files.items():
+            if os.path.exists(model_path):
+                try:
+                    # Create fracture detection model (binary classification)
+                    # These models match the architecture from fracture_detection_training.ipynb
+                    if 'ResNet50' in model_key:
+                        model = FractureResNet50()
+                    elif 'DenseNet121' in model_key:
+                        model = FractureDenseNet121()
+                    elif 'EfficientNetB0' in model_key:
+                        model = FractureEfficientNetB0()
+                    else:
+                        continue
+                    
+                    model.load_state_dict(torch.load(model_path, map_location=self.device))
+                    model.to(self.device)
+                    model.eval()
+                    self.pytorch_models[model_key] = model
+                    print(f"✓ Loaded PyTorch fracture {model_key}")
+                except Exception as e:
+                    print(f"✗ Error loading PyTorch fracture {model_key}: {e}")
+            else:
+                print(f"✗ PyTorch fracture model file not found: {model_path}")
+        
+        # TensorFlow models for other conditions (if any)
         if TENSORFLOW_AVAILABLE:
             tensorflow_model_files = {
                 'Fracture_Model': 'models/fracture_classification_model.h5',
-                'Osteoporosis_Model': 'models/Osteoporosis_Model.h5'
             }
             
             for model_key, model_path in tensorflow_model_files.items():
@@ -136,7 +249,7 @@ class MedicalImagingModel:
                 else:
                     print(f"✗ TensorFlow model file not found: {model_path}")
         else:
-            print("⚠️ TensorFlow not available, skipping fracture and osteoporosis models")
+            print("⚠️ TensorFlow not available, skipping additional TensorFlow models")
     
     def predict_pytorch_models(self, image_path):
         """Make predictions using PyTorch models for chest conditions"""
@@ -171,15 +284,51 @@ class MedicalImagingModel:
         except Exception as e:
             return {}, f"Error during PyTorch prediction: {str(e)}"
     
+    def predict_fracture_models(self, image_path):
+        """Make predictions using PyTorch fracture detection models"""
+        fracture_models = {k: v for k, v in self.pytorch_models.items() if 'Fracture_' in k}
+        
+        if not fracture_models:
+            return {}, "No fracture detection models loaded"
+        
+        try:
+            # Load and preprocess image for PyTorch
+            image = Image.open(image_path).convert('RGB')
+            input_tensor = transform(image).unsqueeze(0).to(self.device)
+            
+            predictions = {}
+            fracture_classes = ['NON_FRACTURED', 'FRACTURED']
+            
+            with torch.no_grad():
+                for model_name, model in fracture_models.items():
+                    outputs = model(input_tensor)
+                    probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
+                    
+                    # Get prediction results
+                    predicted_class_idx = torch.argmax(probabilities).item()
+                    predicted_class = fracture_classes[predicted_class_idx]
+                    confidence = probabilities[predicted_class_idx].item() * 100
+                    
+                    predictions[model_name] = {
+                        'class': predicted_class,
+                        'confidence': round(confidence, 2),
+                        'probabilities': {fracture_classes[i]: round(probabilities[i].item() * 100, 2) for i in range(len(fracture_classes))}
+                    }
+            
+            return predictions, None
+            
+        except Exception as e:
+            return {}, f"Error during fracture prediction: {str(e)}"
+    
     def predict_tensorflow_models(self, image_path):
-        """Make predictions using TensorFlow models for fracture and osteoporosis"""
+        """Make predictions using TensorFlow models (if any legacy models exist)"""
         if not TENSORFLOW_AVAILABLE or not self.tensorflow_models:
             return {}, "No TensorFlow models available"
         
         try:
             predictions = {}
             
-            # Fracture detection
+            # Fracture detection (if TensorFlow model exists)
             if 'Fracture_Model' in self.tensorflow_models:
                 image_array = preprocess_for_tensorflow(image_path)
                 if image_array is not None:
@@ -190,7 +339,7 @@ class MedicalImagingModel:
                     fracture_class = "FRACTURE" if fracture_prob > 0.5 else "NO_FRACTURE"
                     fracture_confidence = fracture_prob * 100 if fracture_class == "FRACTURE" else (1 - fracture_prob) * 100
                     
-                    predictions['Fracture_Model'] = {
+                    predictions['Legacy_Fracture_Model'] = {
                         'class': fracture_class,
                         'confidence': round(fracture_confidence, 2),
                         'probabilities': {
@@ -199,55 +348,62 @@ class MedicalImagingModel:
                         }
                     }
             
-            # Osteoporosis detection
-            if 'Osteoporosis_Model' in self.tensorflow_models:
-                image_array = preprocess_for_tensorflow(image_path)
-                if image_array is not None:
-                    osteo_pred = self.tensorflow_models['Osteoporosis_Model'].predict(image_array, verbose=0)
-                    
-                    # Assuming binary classification for osteoporosis
-                    osteo_prob = osteo_pred[0][0] if len(osteo_pred[0]) == 1 else np.max(osteo_pred[0])
-                    osteo_class = "OSTEOPOROSIS" if osteo_prob > 0.5 else "NORMAL"
-                    osteo_confidence = osteo_prob * 100 if osteo_class == "OSTEOPOROSIS" else (1 - osteo_prob) * 100
-                    
-                    predictions['Osteoporosis_Model'] = {
-                        'class': osteo_class,
-                        'confidence': round(osteo_confidence, 2),
-                        'probabilities': {
-                            'OSTEOPOROSIS': round(osteo_prob * 100, 2),
-                            'NORMAL': round((1 - osteo_prob) * 100, 2)
-                        }
-                    }
-            
             return predictions, None
             
         except Exception as e:
             return {}, f"Error during TensorFlow prediction: {str(e)}"
     
-    def predict_all(self, image_path, user_xray_type='chest'):
-        """Make predictions using appropriate models based on user selection"""
-        # Use user-selected X-ray type instead of auto-detection
-        xray_type = user_xray_type
-        print(f"User selected X-ray type: {xray_type}")
+    def predict_all(self, image_path, user_problem_type='chest'):
+        """Make predictions using appropriate models based on user-selected problem type"""
+        print(f"User selected problem type: {user_problem_type}")
         
         all_predictions = {}
         errors = []
-        routing_info = {'xray_type': xray_type, 'models_used': [], 'selection_method': 'user'}
+        routing_info = {'problem_type': user_problem_type, 'models_used': [], 'selection_method': 'user'}
         
-        if xray_type == 'chest':
-            # For chest X-rays, use PyTorch models and return the best confident result
-            pytorch_preds, pytorch_error = self.predict_pytorch_models(image_path)
-            if pytorch_error:
-                errors.append(f"Chest X-ray models: {pytorch_error}")
+        if user_problem_type == 'chest':
+            # For chest conditions, use chest X-ray PyTorch models
+            chest_models = {k: v for k, v in self.pytorch_models.items() if 'Fracture_' not in k}
+            
+            if chest_models:
+                pytorch_preds, pytorch_error = self.predict_pytorch_models(image_path)
+                if pytorch_error:
+                    errors.append(f"Chest condition models: {pytorch_error}")
+                else:
+                    all_predictions.update(pytorch_preds)
+                    routing_info['models_used'] = list(pytorch_preds.keys())
+                    
+                    # Find the most confident model for chest conditions
+                    best_model = None
+                    best_confidence = 0
+                    
+                    for model_name, prediction in pytorch_preds.items():
+                        if prediction['confidence'] > best_confidence:
+                            best_confidence = prediction['confidence']
+                            best_model = model_name
+                    
+                    if best_model:
+                        routing_info['best_model'] = {
+                            'name': best_model,
+                            'prediction': pytorch_preds[best_model]
+                        }
             else:
-                all_predictions.update(pytorch_preds)
-                routing_info['models_used'] = list(pytorch_preds.keys())
+                errors.append("No chest condition models loaded")
+        
+        elif user_problem_type == 'fracture':
+            # For fracture detection, use fracture-specific PyTorch models
+            fracture_preds, fracture_error = self.predict_fracture_models(image_path)
+            if fracture_error:
+                errors.append(f"Fracture detection models: {fracture_error}")
+            else:
+                all_predictions.update(fracture_preds)
+                routing_info['models_used'] = list(fracture_preds.keys())
                 
-                # Find the most confident model for chest conditions
+                # Find the most confident fracture model
                 best_model = None
                 best_confidence = 0
                 
-                for model_name, prediction in pytorch_preds.items():
+                for model_name, prediction in fracture_preds.items():
                     if prediction['confidence'] > best_confidence:
                         best_confidence = prediction['confidence']
                         best_model = model_name
@@ -255,35 +411,14 @@ class MedicalImagingModel:
                 if best_model:
                     routing_info['best_model'] = {
                         'name': best_model,
-                        'prediction': pytorch_preds[best_model]
+                        'prediction': fracture_preds[best_model]
                     }
-        
-        else:  # xray_type == 'other'
-            # For other X-rays, use TensorFlow models (fracture and osteoporosis)
+            
+            # Also try legacy TensorFlow models if available
             tensorflow_preds, tensorflow_error = self.predict_tensorflow_models(image_path)
-            if tensorflow_error:
-                errors.append(f"Specialized X-ray models: {tensorflow_error}")
-            else:
+            if not tensorflow_error and tensorflow_preds:
                 all_predictions.update(tensorflow_preds)
-                routing_info['models_used'] = list(tensorflow_preds.keys())
-                
-                # Find the most confident model for specialized conditions
-                best_model = None
-                best_confidence = 0
-                
-                for model_name, prediction in tensorflow_preds.items():
-                    # Only consider positive findings with high confidence
-                    if (prediction['class'] in ['FRACTURE', 'OSTEOPOROSIS'] and 
-                        prediction['confidence'] > best_confidence and 
-                        prediction['confidence'] > 70):  # High confidence threshold
-                        best_confidence = prediction['confidence']
-                        best_model = model_name
-                
-                if best_model:
-                    routing_info['best_model'] = {
-                        'name': best_model,
-                        'prediction': tensorflow_preds[best_model]
-                    }
+                routing_info['models_used'].extend(list(tensorflow_preds.keys()))
         
         if not all_predictions:
             return None, "; ".join(errors) if errors else "No appropriate models available", None
@@ -308,13 +443,13 @@ def generate_medical_report(predictions, patient_info=None, routing_info=None):
 
 def generate_openai_report(predictions, ensemble_result, routing_info=None):
     """Generate medical report using OpenAI API with routing information"""
-    xray_type = ensemble_result.get('xray_type', 'unknown')
+    problem_type = ensemble_result.get('problem_type', 'unknown')
     
     prompt = f"""
     As a medical AI assistant, generate a structured medical report based on X-ray analysis results.
     
-    X-ray Type: {xray_type.upper()} X-ray
-    Analysis Approach: {"Chest condition models" if xray_type == 'chest' else "Specialized bone/joint models"}
+    Problem Type: {problem_type.upper()} Detection
+    Analysis Approach: {"Chest condition models" if problem_type == 'chest' else "Specialized fracture detection models"}
     
     Analysis Results:
     - Primary Diagnosis: {ensemble_result['diagnosis']}
@@ -339,13 +474,13 @@ def generate_openai_report(predictions, ensemble_result, routing_info=None):
     4. IMPORTANT NOTES
     
     Keep the language clear and professional. Include appropriate medical disclaimers.
-    Consider the X-ray type in your interpretation and recommendations.
+    Consider the problem type in your interpretation and recommendations.
     """
     
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": f"You are a medical AI assistant helping to interpret {'chest' if xray_type == 'chest' else 'bone/joint'} X-ray analysis results. Provide professional, accurate, and helpful medical reports while emphasizing the need for professional medical consultation."},
+            {"role": "system", "content": f"You are a medical AI assistant helping to interpret {'chest condition' if problem_type == 'chest' else 'fracture detection'} analysis results. Provide professional, accurate, and helpful medical reports while emphasizing the need for professional medical consultation."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=800,
@@ -357,9 +492,9 @@ def generate_openai_report(predictions, ensemble_result, routing_info=None):
 def get_ensemble_prediction(predictions, routing_info=None):
     """Get ensemble prediction from multiple models with routing awareness"""
     if not predictions:
-        return {'diagnosis': 'Unknown', 'confidence': 0.0, 'secondary_findings': [], 'xray_type': 'unknown'}
+        return {'diagnosis': 'Unknown', 'confidence': 0.0, 'secondary_findings': [], 'problem_type': 'unknown'}
     
-    xray_type = routing_info.get('xray_type', 'unknown') if routing_info else 'unknown'
+    problem_type = routing_info.get('problem_type', 'unknown') if routing_info else 'unknown'
     
     # If we have routing info with a best model, prioritize it
     if routing_info and 'best_model' in routing_info:
@@ -412,8 +547,8 @@ def get_ensemble_prediction(predictions, routing_info=None):
             primary_diagnosis = max(final_scores.keys(), key=lambda x: final_scores[x])
             primary_confidence = final_scores[primary_diagnosis]
         
-        elif xray_type == 'other':
-            # For non-chest X-rays, look for the highest confidence finding
+        elif problem_type == 'fracture':
+            # For fracture detection, look for the highest confidence finding
             max_confidence = 0
             for model_name, result in predictions.items():
                 if result['confidence'] > max_confidence:
@@ -442,7 +577,7 @@ def get_ensemble_prediction(predictions, routing_info=None):
         'diagnosis': primary_diagnosis,
         'confidence': primary_confidence,
         'secondary_findings': secondary_findings,
-        'xray_type': xray_type,
+        'problem_type': problem_type,
         'routing_info': routing_info
     }
 
@@ -451,7 +586,7 @@ def generate_fallback_report(ensemble_result, predictions, routing_info=None):
     diagnosis = ensemble_result['diagnosis']
     confidence = ensemble_result['confidence']
     secondary_findings = ensemble_result.get('secondary_findings', [])
-    xray_type = ensemble_result.get('xray_type', 'unknown')
+    problem_type = ensemble_result.get('problem_type', 'unknown')
     selection_method = routing_info.get('selection_method', 'auto') if routing_info else 'auto'
     
     report = f"""
@@ -461,8 +596,8 @@ AUTOMATED MEDICAL IMAGING ANALYSIS REPORT
 Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 IMAGE ANALYSIS DETAILS:
-X-ray Type: {xray_type.upper()} X-ray (User Selected)
-Analysis Method: {"Chest condition-specific models" if xray_type == 'chest' else "Bone/joint specialized models"}"""
+Problem Type: {problem_type.upper()} Detection (User Selected)
+Analysis Method: {"Chest condition-specific models" if problem_type == 'chest' else "Fracture detection specialized models"}"""
 
     if routing_info:
         report += f"""
@@ -475,7 +610,7 @@ Best Performing Model: {best_model['name']} ({best_model['prediction']['confiden
     report += f"""
 
 CLINICAL FINDINGS:
-Based on AI analysis using user-selected {'chest X-ray specialized' if xray_type == 'chest' else 'bone/joint specialized'} deep learning models.
+Based on AI analysis using user-selected {'chest condition specialized' if problem_type == 'chest' else 'fracture detection specialized'} deep learning models.
 
 PRIMARY DIAGNOSTIC IMPRESSION:
 Main Finding: {diagnosis}
@@ -499,8 +634,8 @@ DETAILED MODEL ANALYSIS:"""
         report += f"""
 • {model_name}: {result['class']} ({result['confidence']:.1f}%)"""
     
-    # Recommendations based on X-ray type and findings
-    if xray_type == 'chest':
+    # Recommendations based on problem type and findings
+    if problem_type == 'chest':
         # Chest X-ray specific recommendations
         if diagnosis == 'COVID19':
             report += """
@@ -540,8 +675,8 @@ RECOMMENDATIONS FOR NORMAL CHEST FINDINGS:
 • Routine follow-up as clinically indicated
 • Continue regular health monitoring"""
     
-    else:  # Non-chest X-ray
-        if diagnosis == 'FRACTURE':
+    else:  # Fracture detection
+        if diagnosis == 'FRACTURED':
             report += """
 
 RECOMMENDATIONS FOR FRACTURE FINDING:
@@ -551,22 +686,11 @@ RECOMMENDATIONS FOR FRACTURE FINDING:
 • Follow-up imaging may be necessary to monitor healing
 • Assess for complications and associated injuries"""
             
-        elif diagnosis == 'OSTEOPOROSIS':
+        else:  # Non-fractured or normal findings
             report += """
 
-RECOMMENDATIONS FOR OSTEOPOROSIS FINDING:
-• Endocrinology or rheumatology consultation advised
-• Bone density (DEXA) scan recommended for confirmation
-• Calcium and Vitamin D supplementation consideration
-• Fall prevention measures important
-• Lifestyle modifications (exercise, nutrition) recommended
-• Regular monitoring for fracture risk"""
-            
-        else:  # Normal or other findings
-            report += """
-
-RECOMMENDATIONS FOR BONE/JOINT ANALYSIS:
-• No acute bone pathology detected on current imaging
+RECOMMENDATIONS FOR BONE ANALYSIS:
+• No acute bone fracture detected on current imaging
 • Clinical correlation with symptoms advised
 • Follow-up as clinically indicated"""
     
@@ -596,25 +720,25 @@ IMPORTANT MEDICAL DISCLAIMERS:
 ⚠️ Results should not replace professional medical diagnosis or clinical judgment.
 ⚠️ Always consult with qualified healthcare professionals for final diagnosis and treatment decisions.
 ⚠️ Clinical correlation with patient symptoms, history, and physical examination is essential.
-⚠️ This {'chest X-ray' if xray_type == 'chest' else 'bone/joint imaging'} analysis tool assists healthcare providers but cannot replace expert medical interpretation.
+⚠️ This {'chest condition' if problem_type == 'chest' else 'fracture detection'} analysis tool assists healthcare providers but cannot replace expert medical interpretation.
 ⚠️ In case of emergency or acute symptoms, seek immediate medical attention regardless of AI analysis results.
 
 TECHNICAL NOTES:
-• X-ray type selected by user: {xray_type.upper()}
-• Analysis performed using {'chest condition specialized models' if xray_type == 'chest' else 'bone/joint specialized models'}"""
+• Problem type selected by user: {problem_type.upper()}
+• Analysis performed using {'chest condition specialized models' if problem_type == 'chest' else 'fracture detection specialized models'}"""
 
-    if xray_type == 'chest':
+    if problem_type == 'chest':
         report += """
 • Chest models used: ResNet50, DenseNet121, EfficientNetB0 for respiratory condition detection"""
     else:
         report += """
-• Specialized models used: Fracture detection and Osteoporosis assessment models"""
+• Specialized models used: ResNet50, DenseNet121, EfficientNetB0 for fracture detection"""
 
     report += f"""
 • Confidence levels reflect model certainty and should be interpreted within clinical context
-• Model selection based on user X-ray type specification
+• Model selection based on user problem type specification
 
-Disclaimer: This automated analysis uses specialized AI models trained on medical imaging data. The {'chest X-ray' if xray_type == 'chest' else 'bone/joint imaging'} models are optimized for their respective domains based on user selection. Results should be interpreted by qualified medical professionals in conjunction with clinical findings and patient presentation.
+Disclaimer: This automated analysis uses specialized AI models trained on medical imaging data. The {'chest condition' if problem_type == 'chest' else 'fracture detection'} models are optimized for their respective domains based on user selection. Results should be interpreted by qualified medical professionals in conjunction with clinical findings and patient presentation.
 """
     
     return report
@@ -635,10 +759,10 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    # Get user-selected X-ray type
-    user_xray_type = request.form.get('xray_type', 'chest')  # Default to chest if not specified
-    if user_xray_type not in ['chest', 'other']:
-        return jsonify({'error': 'Invalid X-ray type. Must be "chest" or "other"'}), 400
+    # Get user-selected problem type
+    user_problem_type = request.form.get('problem_type', 'chest')  # Default to chest if not specified
+    if user_problem_type not in ['chest', 'fracture']:
+        return jsonify({'error': 'Invalid problem type. Must be "chest" or "fracture"'}), 400
     
     if file and allowed_file(file.filename):
         try:
@@ -648,14 +772,14 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            # Make prediction using user-selected X-ray type for routing
-            predictions, error, routing_info = medical_model.predict_all(filepath, user_xray_type)
+            # Make prediction using user-selected problem type for routing
+            predictions, error, routing_info = medical_model.predict_all(filepath, user_problem_type)
             
             if error:
                 return jsonify({'error': error}), 500
             
             if not predictions:
-                return jsonify({'error': 'No appropriate models available for this X-ray type'}), 500
+                return jsonify({'error': 'No appropriate models available for this problem type'}), 500
             
             # Generate medical report with routing information
             ensemble_result = get_ensemble_prediction(predictions, routing_info)

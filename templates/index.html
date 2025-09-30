@@ -443,7 +443,7 @@
     <div class="container">
         <div class="header">
             <h1>🏥 Medical Imaging AI System</h1>
-            <p>Advanced X-ray analysis with user-selectable model routing for chest conditions, fractures, and osteoporosis detection</p>
+            <p>Advanced X-ray analysis with user-selectable problem detection for chest conditions and fracture diagnosis</p>
         </div>
 
         <div class="main-content">
@@ -451,26 +451,26 @@
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📱</div>
                     <div class="upload-text">Drop your X-ray image here</div>
-                    <div class="upload-subtext">Select X-ray type and upload your image<br>(PNG, JPG, JPEG - Max 16MB)</div>
+                    <div class="upload-subtext">Select problem type and upload your image<br>(PNG, JPG, JPEG - Max 16MB)</div>
                     <input type="file" id="fileInput" accept=".png,.jpg,.jpeg" />
                 </div>
                 
-                <!-- X-ray type selection -->
-                <div class="xray-type-selection" id="xrayTypeSelection" style="display: none;">
-                    <h3>Select X-ray Type:</h3>
+                <!-- Problem type selection -->
+                <div class="xray-type-selection" id="problemTypeSelection" style="display: none;">
+                    <h3>Select Problem Type to Detect:</h3>
                     <div class="radio-group">
                         <label class="radio-option">
-                            <input type="radio" name="xrayType" value="chest" checked>
+                            <input type="radio" name="problemType" value="chest" checked>
                             <span class="radio-label">
-                                🫁 <strong>Chest X-ray</strong>
-                                <br><small>For COVID-19, Pneumonia, TB detection</small>
+                                🫁 <strong>Chest Conditions</strong>
+                                <br><small>COVID-19, Pneumonia, TB detection using chest X-rays</small>
                             </span>
                         </label>
                         <label class="radio-option">
-                            <input type="radio" name="xrayType" value="other">
+                            <input type="radio" name="problemType" value="fracture">
                             <span class="radio-label">
-                                🦴 <strong>Bone/Joint X-ray</strong>
-                                <br><small>For fracture and osteoporosis detection</small>
+                                🦴 <strong>Fracture Detection</strong>
+                                <br><small>Bone fracture identification using specialized models</small>
                             </span>
                         </label>
                     </div>
@@ -480,13 +480,13 @@
                     Select Image
                 </button>
                 <button class="btn" id="analyzeBtn" onclick="analyzeImage()" disabled>
-                    🔍 Analyze X-ray
+                    🔍 Analyze Image
                 </button>
             </div>
 
             <div class="loading" id="loading">
                 <div class="loading-spinner"></div>
-                <p>Analyzing X-ray with selected model type...</p>
+                <p>Analyzing image with selected problem detection models...</p>
                 <p><small>Processing with appropriate AI models</small></p>
             </div>
 
@@ -516,7 +516,7 @@
             </div>
 
             <div class="warning">
-                ⚠️ <strong>Medical Disclaimer:</strong> This AI system uses user-selected model routing for specialized analysis. Results are for screening purposes only and should not replace professional medical diagnosis. Always consult with qualified healthcare professionals for final diagnosis and treatment decisions.
+                ⚠️ <strong>Medical Disclaimer:</strong> This AI system uses user-selected problem detection for specialized analysis. Results are for screening purposes only and should not replace professional medical diagnosis. Always consult with qualified healthcare professionals for final diagnosis and treatment decisions.
             </div>
         </div>
     </div>
@@ -602,8 +602,8 @@
             };
             reader.readAsDataURL(file);
             
-            // Show X-ray type selection
-            document.getElementById('xrayTypeSelection').style.display = 'block';
+            // Show problem type selection
+            document.getElementById('problemTypeSelection').style.display = 'block';
             
             // Enable analyze button
             document.getElementById('analyzeBtn').disabled = false;
@@ -618,10 +618,10 @@
                 return;
             }
 
-            // Get selected X-ray type
-            const selectedXrayType = document.querySelector('input[name="xrayType"]:checked')?.value;
-            if (!selectedXrayType) {
-                showError('Please select X-ray type');
+            // Get selected problem type
+            const selectedProblemType = document.querySelector('input[name="problemType"]:checked')?.value;
+            if (!selectedProblemType) {
+                showError('Please select problem type');
                 return;
             }
 
@@ -633,7 +633,7 @@
             // Create form data
             const formData = new FormData();
             formData.append('file', selectedFile);
-            formData.append('xray_type', selectedXrayType);
+            formData.append('problem_type', selectedProblemType);
 
             // Send request
             fetch('/upload', {
@@ -661,28 +661,28 @@
         }
 
         function displayResults(data) {
-            // Show X-ray type selection result
-            const xrayType = data.routing_info?.xray_type || 'unknown';
+            // Show problem type selection result
+            const problemType = data.routing_info?.problem_type || 'unknown';
             const modelsUsed = data.routing_info?.models_used || [];
             
-            // Add X-ray type indicator
+            // Add problem type indicator
             const ensembleResult = document.getElementById('ensembleResult');
-            const xrayTypeIndicator = document.createElement('div');
-            xrayTypeIndicator.style.marginBottom = '15px';
-            xrayTypeIndicator.style.fontSize = '1.1em';
-            xrayTypeIndicator.style.opacity = '0.9';
+            const problemTypeIndicator = document.createElement('div');
+            problemTypeIndicator.style.marginBottom = '15px';
+            problemTypeIndicator.style.fontSize = '1.1em';
+            problemTypeIndicator.style.opacity = '0.9';
             
-            if (xrayType === 'chest') {
-                xrayTypeIndicator.innerHTML = `🫁 <strong>Chest X-ray selected</strong> - Using specialized chest condition models`;
-                xrayTypeIndicator.style.background = 'rgba(52, 152, 219, 0.2)';
-            } else {
-                xrayTypeIndicator.innerHTML = `🦴 <strong>Bone/Joint X-ray selected</strong> - Using specialized fracture and bone density models`;
-                xrayTypeIndicator.style.background = 'rgba(230, 126, 34, 0.2)';
+            if (problemType === 'chest') {
+                problemTypeIndicator.innerHTML = `🫁 <strong>Chest Condition Detection</strong> - Using specialized respiratory disease models`;
+                problemTypeIndicator.style.background = 'rgba(52, 152, 219, 0.2)';
+            } else if (problemType === 'fracture') {
+                problemTypeIndicator.innerHTML = `🦴 <strong>Fracture Detection</strong> - Using specialized bone fracture models`;
+                problemTypeIndicator.style.background = 'rgba(230, 126, 34, 0.2)';
             }
             
-            xrayTypeIndicator.style.padding = '10px 15px';
-            xrayTypeIndicator.style.borderRadius = '8px';
-            xrayTypeIndicator.style.marginBottom = '20px';
+            problemTypeIndicator.style.padding = '10px 15px';
+            problemTypeIndicator.style.borderRadius = '8px';
+            problemTypeIndicator.style.marginBottom = '20px';
             
             // Show ensemble result
             const ensembleDiagnosis = document.getElementById('ensembleDiagnosis');
@@ -698,23 +698,22 @@
             }
             ensembleConfidence.innerHTML = confidenceText;
             
-            // Insert X-ray type indicator at the top of ensemble result
-            const existingIndicator = ensembleResult.querySelector('.xray-type-indicator');
+            // Insert problem type indicator at the top of ensemble result
+            const existingIndicator = ensembleResult.querySelector('.problem-type-indicator');
             if (existingIndicator) {
                 existingIndicator.remove();
             }
-            xrayTypeIndicator.className = 'xray-type-indicator';
-            ensembleResult.insertBefore(xrayTypeIndicator, ensembleResult.firstChild.nextSibling);
+            problemTypeIndicator.className = 'problem-type-indicator';
+            ensembleResult.insertBefore(problemTypeIndicator, ensembleResult.firstChild.nextSibling);
             
-            // Color code based on diagnosis and X-ray type
+            // Color code based on diagnosis and problem type
             const diagnosisColors = {
                 'COVID19': '#e74c3c',
                 'PNEUMONIA': '#f39c12',
                 'TURBERCULOSIS': '#9b59b6',
                 'NORMAL': '#27ae60',
-                'FRACTURE': '#e67e22',
-                'NO_FRACTURE': '#27ae60',
-                'OSTEOPOROSIS': '#9b59b6'
+                'FRACTURED': '#e67e22',
+                'NON_FRACTURED': '#27ae60'
             };
             
             const primaryColor = diagnosisColors[data.ensemble.diagnosis] || '#8e44ad';
@@ -759,12 +758,13 @@
                 let modelDisplayName = modelName;
                 let cardClass = 'prediction-card';
                 
-                if (modelName.includes('Fracture')) {
+                if (modelName.includes('Fracture_')) {
                     cardClass += ' fracture-model';
-                    modelDisplayName = '🦴 Fracture Detection';
-                } else if (modelName.includes('Osteoporosis')) {
-                    cardClass += ' osteoporosis-model';
-                    modelDisplayName = '🦴 Osteoporosis Detection';
+                    const modelType = modelName.split('_')[1]; // Extract ResNet50, DenseNet121, etc.
+                    modelDisplayName = `🦴 ${modelType} (Fracture)`;
+                } else if (modelName.includes('Legacy_Fracture')) {
+                    cardClass += ' fracture-model';
+                    modelDisplayName = '🦴 Legacy Fracture Model';
                 } else {
                     modelDisplayName = `🫁 ${modelName}`;
                 }
@@ -815,10 +815,10 @@
             document.getElementById('fileInput').value = '';
             document.getElementById('analyzeBtn').disabled = true;
             document.getElementById('results').style.display = 'none';
-            document.getElementById('xrayTypeSelection').style.display = 'none';
+            document.getElementById('problemTypeSelection').style.display = 'none';
             
-            // Reset X-ray type selection to chest (default)
-            document.querySelector('input[name="xrayType"][value="chest"]').checked = true;
+            // Reset problem type selection to chest (default)
+            document.querySelector('input[name="problemType"][value="chest"]').checked = true;
             
             // Reset upload area
             const uploadText = document.querySelector('.upload-text');

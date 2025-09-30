@@ -13,6 +13,13 @@ keras==3.5.0
 
 # Image Processing and Computer Vision
 Pillow==10.4.0
+opencv-python==4.10.0.84
+
+# Data Augmentation (for training notebooks)
+albumentations==1.4.15
+
+# EfficientNet (for training notebooks)
+efficientnet-pytorch==0.7.1
 
 # Scientific Computing and Data Processing
 numpy==1.26.4
@@ -24,10 +31,12 @@ scikit-learn==1.5.2
 # Optional: OpenAI API for enhanced reports (remove if not using)
 openai==1.51.0
 
-# Jupyter Notebook support (for training)
+# Training and Notebook Dependencies
 jupyter==1.1.1
 ipywidgets==8.1.5
 tqdm==4.66.5
+kaggle==1.6.17
+pyyaml==6.0.2
 
 # Web Server (for production deployment)
 gunicorn==23.0.0

@@ -66,22 +66,27 @@ All chest condition models are pre-trained on ImageNet and fine-tuned on chest X
 
 ```
 Medical-Imaging-for-Rural-Areas-Early-Disease-Detection/
-├── colab_setup_fixed.ipynb       # 🚀 Complete training pipeline
-├── app.py                        # 🌐 Flask web app with user-controlled routing
-├── config.py                     # ⚙️ Configuration settings
-├── test_xray_routing.py          # 🧪 Test script for user selection functionality
+├── Covid-pnemonia-tb-Chest_Xray_training.ipynb   # 🫁 Chest X-ray training (COVID, Pneumonia, TB)
+├── fracture_detection_training.ipynb             # 🦴 Fracture detection training with Drive integration
+├── colab_setup_fixed.ipynb                       # 🚀 Legacy complete training pipeline  
+├── app.py                                        # 🌐 Flask web app with problem-type selection
+├── config.py                                     # ⚙️ Configuration settings
+├── demo_test.py                                  # 🧪 Demo testing script
+├── test_setup.py                                 # 🔧 Setup verification script
 ├── templates/
-│   └── index.html               # Enhanced web interface with user selection
-├── models/                      # Trained model files
-│   ├── ResNet50_colab.pth       # PyTorch chest X-ray model
-│   ├── DenseNet121_colab.pth    # PyTorch chest X-ray model
-│   ├── EfficientNetB0_colab.pth # PyTorch chest X-ray model
-│   ├── fracture_classification_model.h5    # TensorFlow fracture detection
-│   └── Osteoporosis_Model.h5    # TensorFlow osteoporosis detection
-├── uploads/                     # Temporary upload folder
-├── requirements.txt             # Python dependencies (no longer includes OpenCV)
-├── README.md                    # This comprehensive documentation
-└── Chest_Xray_Dataset/          # Training dataset
+│   └── index.html                               # Enhanced web interface with problem selection
+├── models/                                      # Trained model files
+│   ├── ResNet50_colab.pth                       # PyTorch chest X-ray model
+│   ├── DenseNet121_colab.pth                    # PyTorch chest X-ray model
+│   ├── EfficientNetB0_colab.pth                 # PyTorch chest X-ray model
+│   ├── fracture_classification_model.h5         # TensorFlow fracture detection
+│   └── Osteoporosis_Model.h5                    # TensorFlow osteoporosis detection
+├── uploads/                                     # Temporary upload folder
+├── requirements.txt                             # Complete Python dependencies (updated)
+├── README.md                                    # This comprehensive documentation
+├── LICENSE                                      # MIT License
+├── start_app.bat                                # Windows batch file to start app
+└── Chest_Xray_Dataset/                          # Training dataset (if downloaded locally)
     ├── train/
     │   ├── COVID19/, NORMAL/, PNEUMONIA/, TURBERCULOSIS/
     ├── val/
@@ -92,37 +97,57 @@ Medical-Imaging-for-Rural-Areas-Early-Disease-Detection/
 
 ## 🚀 **Part 1: Model Training - Google Colab (Recommended)**
 
-### **⚡ One-File Training Solution!**
+### **📚 Training Notebooks Available**
 
-Everything you need for training is in **`colab_setup_fixed.ipynb`** - a single, self-contained notebook!
+We provide **two comprehensive training notebooks** for different medical imaging tasks:
 
-### **Training Steps:**
+1. **`Covid-pnemonia-tb-Chest_Xray_training.ipynb`** - Chest X-ray analysis (4 conditions)
+2. **`fracture_detection_training.ipynb`** - Fracture detection with Google Drive integration
 
-1. **📤 Upload to Google Drive:**
-   - Download this repository
-   - Upload the entire folder to your Google Drive
+### **⚡ Complete Training Solutions!**
 
-2. **🔓 Open Google Colab:**
-   - Go to [colab.research.google.com](https://colab.research.google.com)
-   - Upload `colab_setup_fixed.ipynb`
+Both notebooks are **self-contained** and handle everything automatically!
 
-3. **⚡ Enable GPU:**
-   - Runtime → Change runtime type → Hardware accelerator → **GPU**
-   - Select GPU type → **T4** (free tier)
+### **🔥 Quick Training Steps:**
 
-4. **▶️ Run Everything:**
-   - Run all cells sequentially
-   - The notebook handles everything automatically!
+#### **Option 1: Chest X-ray Models (COVID-19, Pneumonia, TB, Normal)**
+1. **📤 Upload `Covid-pnemonia-tb-Chest_Xray_training.ipynb` to Google Colab**
+2. **⚡ Enable GPU:** Runtime → Change runtime type → Hardware accelerator → **GPU**
+3. **▶️ Run all cells** - handles dataset download, training, and model saving
+4. **📱 Works with any device** - just need a web browser!
 
-### **🎯 What the Training Notebook Does:**
+#### **Option 2: Fracture Detection Models (ResNet50, DenseNet121, EfficientNetB0)**
+1. **📤 Upload `fracture_detection_training.ipynb` to Google Colab**
+2. **⚡ Enable GPU:** Runtime → Change runtime type → Hardware accelerator → **GPU**  
+3. **▶️ Run all cells** - includes Google Drive integration for persistent storage
+4. **🔄 Persistent storage** - models and dataset saved to Google Drive
 
-✅ **Auto-detects** your dataset location  
-✅ **Verifies** dataset structure and image counts  
-✅ **Installs** all required packages  
-✅ **Creates** and trains all 3 models  
-✅ **Evaluates** performance with detailed metrics  
-✅ **Saves** trained models to your Drive  
-✅ **Visualizes** results with plots and confusion matrices  
+#### **Universal Steps:**
+1. **🔓 Open Google Colab:** Go to [colab.research.google.com](https://colab.research.google.com)
+2. **📂 Upload chosen notebook** from the repository
+3. **⚡ Enable GPU:** Runtime → Change runtime type → Hardware accelerator → **GPU**
+4. **▶️ Run Everything:** All cells sequentially - full automation!
+
+### **🎯 What Each Training Notebook Does:**
+
+#### **Chest X-ray Training Notebook (`Covid-pnemonia-tb-Chest_Xray_training.ipynb`)**
+✅ **Auto-detects** dataset location or guides download setup  
+✅ **Installs** PyTorch, scikit-learn, and visualization packages  
+✅ **Creates** and trains 3 PyTorch models (ResNet50, DenseNet121, EfficientNetB0)  
+✅ **Handles** 4-class classification (COVID-19, Pneumonia, TB, Normal)  
+✅ **Evaluates** with accuracy, precision, recall, F1-score  
+✅ **Saves** trained `.pth` models for your Flask app  
+✅ **Visualizes** training curves and confusion matrices  
+
+#### **Fracture Detection Notebook (`fracture_detection_training.ipynb`)**
+✅ **Google Drive Integration** - persistent storage across sessions  
+✅ **Kaggle API Setup** - automatic dataset download  
+✅ **Advanced Augmentation** - Albumentations for better training  
+✅ **Triple Architecture** - ResNet50, DenseNet121, EfficientNetB0 for fractures  
+✅ **Comprehensive Evaluation** - detailed performance comparison  
+✅ **Persistent Models** - all models saved to Google Drive  
+✅ **Flask Integration Template** - ready-to-use code for web app  
+✅ **Smart Data Management** - handles dataset exploration and organization  
 
 ## 🌐 **Part 2: Multi-Modal Web Application Deployment**
 
@@ -347,10 +372,11 @@ Fracture and osteoporosis models provide:
 
 ## 📈 Usage Examples
 
-### **🚀 Primary Usage: Google Colab**
-1. Upload `colab_setup_fixed.ipynb` to Google Colab
-2. Enable GPU runtime
-3. Run all cells - everything is automated!
+### **🚀 Primary Usage: Google Colab Training**
+1. **Chest X-ray Models**: Upload `Covid-pnemonia-tb-Chest_Xray_training.ipynb` to Google Colab
+2. **Fracture Models**: Upload `fracture_detection_training.ipynb` to Google Colab  
+3. Enable GPU runtime for both notebooks
+4. Run all cells - everything is automated!
 
 ### **📊 What You Get:**
 - **Trained Models**: All 3 models (ResNet50, DenseNet121, EfficientNetB0)
@@ -420,30 +446,68 @@ NUM_CLASSES = 4          # Fixed for this dataset
 - ✅ Free Tesla T4 GPU provided by Google
 - ✅ 12+ GB GPU memory available
 - ✅ Works on any device with internet connection
-- ✅ **Nothing to install!** Everything is handled automatically
+- ✅ **Auto-installs dependencies!** Notebooks handle everything automatically
 - ✅ Just a web browser and Google account
 
-### **🌐 For Smart Web Application**
+### **📚 Training Notebook Dependencies (Auto-installed)**
+
+#### **Chest X-ray Training Notebook:**
+- **Core Deep Learning:** PyTorch, torchvision, torch audio
+- **Data Science:** NumPy, pandas, matplotlib, seaborn
+- **ML Evaluation:** scikit-learn for metrics and evaluation
+- **Progress Tracking:** tqdm for training progress bars
+- **Utilities:** PyYAML, kaggle API for dataset management
+
+#### **Fracture Detection Training Notebook:**
+- **Deep Learning:** PyTorch + EfficientNet-PyTorch
+- **Advanced Augmentation:** Albumentations for data augmentation
+- **Computer Vision:** OpenCV (cv2) for image processing
+- **Google Integration:** Google Colab API, Google Drive mounting
+- **Data Management:** Kaggle API, pandas, PIL (Pillow)
+- **Visualization:** matplotlib, seaborn for results visualization
+
+### **🌐 For Problem-Type Selection Web Application**
 - **Software**: Python 3.8+, see `requirements.txt` for complete list
-- **Models**: Your trained `.pth` files from Colab + specialized TensorFlow models
-- **New Dependency**: OpenCV (opencv-python) for X-ray type detection
+- **Models**: Your trained `.pth` files from notebooks + specialized TensorFlow models
+- **Computer Vision**: OpenCV for image processing and analysis
 - **Optional**: OpenAI API key for enhanced reports
 - **Storage**: Minimal space for temporary uploads
 
 **Key Dependencies (Auto-installed via requirements.txt):**
-- Flask 3.0.0 (Web framework)
-- PyTorch 2.4.1 + torchvision 0.19.1 (Deep learning - chest conditions)
-- TensorFlow 2.17.0 + Keras 3.5.0 (Deep learning - fracture/osteoporosis)
-- **OpenCV 4.10.0.84** (Computer vision - X-ray type detection)
-- Pillow 10.4.0 (Image processing)
-- NumPy, Pandas, Matplotlib (Data processing)
-- OpenAI 1.51.0 (Optional, for enhanced reports)
+- **Web Framework:** Flask 3.0.0, Werkzeug 3.0.1
+- **Deep Learning:** PyTorch 2.4.1 + torchvision 0.19.1, TensorFlow 2.17.0 + Keras 3.5.0
+- **Computer Vision:** OpenCV 4.10.0.84, Pillow 10.4.0
+- **Data Processing:** NumPy 1.26.4, pandas 2.2.2, matplotlib 3.9.2, seaborn 0.13.2
+- **ML Tools:** scikit-learn 1.5.2, albumentations 1.4.15, efficientnet-pytorch 0.7.1
+- **Training Support:** jupyter 1.1.1, kaggle 1.6.17, tqdm 4.66.5, pyyaml 6.0.2
+- **Optional AI:** OpenAI 1.51.0 (for enhanced reports)
+- **Production:** gunicorn 23.0.0 (for deployment)
 
-### **💻 For Local Training (Not Recommended)**
+### **💻 For Local Development & Training (Advanced)**
 - **Hardware**: NVIDIA GPU with CUDA support, 8GB+ RAM
-- **Software**: Python 3.8+, PyTorch 1.12+
+- **Software**: Python 3.8+, see requirements.txt for complete environment
 - **Storage**: 5GB+ for dataset and models
+- **Setup**: Use `pip install -r requirements.txt` for complete environment
 - **Note**: Google Colab is much easier and provides free GPU access!
+
+### **📦 Using requirements.txt for Local Development**
+```bash
+# Create virtual environment
+python -m venv medical_imaging_env
+
+# Activate environment
+# Windows:
+medical_imaging_env\Scripts\activate
+# macOS/Linux:
+source medical_imaging_env/bin/activate
+
+# Install all dependencies (training + web app)
+pip install -r requirements.txt
+
+# Now you can run training notebooks locally or start the web app
+jupyter notebook  # For training
+python app.py     # For web application
+```
 
 ## 🌐 Smart Web Application API & Advanced Features
 
@@ -643,11 +707,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🚀 **Quick Start Guide**
 
-### **Step 1: Train Your Models** (30 minutes)
+### **Step 1: Train Your Models** (30-45 minutes)
+
+**Option A: Chest X-ray Models (COVID-19, Pneumonia, TB)**
 1. Open Google Colab
-2. Upload `colab_setup_fixed.ipynb`
+2. Upload `Covid-pnemonia-tb-Chest_Xray_training.ipynb`
 3. Enable GPU and run all cells
-4. Download trained models
+4. Download trained `.pth` models
+
+**Option B: Fracture Detection Models** 
+1. Open Google Colab  
+2. Upload `fracture_detection_training.ipynb`
+3. Enable GPU and run all cells
+4. Models auto-saved to Google Drive (persistent storage!)
+
+**Both options provide:** Complete training pipeline, automatic evaluation, visualization, and ready-to-use models
 
 ### **Step 2: Deploy Smart X-ray Analysis Web Application** (10 minutes)
 1. Create virtual environment: `python -m venv medical_imaging_env`
