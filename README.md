@@ -1,6 +1,6 @@
 # Medical Imaging for Rural Areas - AI-Powered X-ray Analysis System
 
-A deep learning solution for automated medical imaging analysis featuring chest X-ray analysis (COVID-19, Pneumonia, Tuberculosis detection) and fracture detection using PyTorch models.
+A deep learning solution for automated medical imaging analysis featuring chest X-ray analysis (COVID-19, Pneumonia, Tuberculosis detection), fracture detection, and osteoporosis detection using PyTorch and TensorFlow models.
 
 ## 🎯 Project Overview
 
@@ -10,6 +10,7 @@ This project provides accessible medical imaging solutions for rural areas where
 2. **Web Application**: Flask-based interface for real-time X-ray analysis
 3. **Chest X-ray Analysis**: Detection of COVID-19, Pneumonia, TB, and Normal cases
 4. **Fracture Detection**: Binary classification for bone fracture identification
+5. **Osteoporosis Detection**: AI-powered bone density analysis using TensorFlow
 
 ## 👥 Team Members
 
@@ -19,7 +20,7 @@ This project provides accessible medical imaging solutions for rural areas where
 
 ## 🏗️ Architecture
 
-The project uses 6 PyTorch models:
+The project uses 7 deep learning models:
 
 **Chest X-ray Models (4-class: COVID-19, Pneumonia, TB, Normal):**
 - ResNet50
@@ -31,7 +32,10 @@ The project uses 6 PyTorch models:
 - Fracture DenseNet121
 - Fracture EfficientNetB0
 
-All models use transfer learning from ImageNet pre-trained weights.
+**Osteoporosis Detection Model (2-class: Normal, Osteoporosis):**
+- TensorFlow/Keras deep learning model
+
+All PyTorch models use transfer learning from ImageNet pre-trained weights.
 
 ## 📁 Project Structure
 
@@ -46,13 +50,14 @@ Medical-Imaging-for-Rural-Areas-Early-Disease-Detection/
 ├── LICENSE
 ├── README.md
 ├── requirements.txt                              # Python dependencies
-├── models/                                      # Trained PyTorch model files
+├── models/                                      # Trained AI model files
 │   ├── DenseNet121_colab.pth                    # Chest X-ray model
 │   ├── EfficientNetB0_colab.pth                 # Chest X-ray model
 │   ├── ResNet50_colab.pth                       # Chest X-ray model
 │   ├── fracture_densenet121.pth                 # Fracture detection model
 │   ├── fracture_efficientnetb0.pth              # Fracture detection model
-│   └── fracture_resnet50.pth                    # Fracture detection model
+│   ├── fracture_resnet50.pth                    # Fracture detection model
+│   └── Osteoporosis_Model.h5                    # TensorFlow osteoporosis model
 ├── templates/
 │   └── index.html                               # Web interface template
 └── uploads/
@@ -110,16 +115,19 @@ Use `fracture_detection_training.ipynb` in Google Colab:
 ## 💻 Web Application Features
 
 - **Image Upload**: Support for PNG, JPG, JPEG X-ray images
-- **Multi-Model Analysis**: Uses ensemble of 6 PyTorch models
+- **Multi-Model Analysis**: Uses ensemble of PyTorch and TensorFlow models
 - **Chest X-ray Detection**: COVID-19, Pneumonia, TB, Normal classification
 - **Fracture Detection**: Binary fracture/no-fracture classification
+- **Osteoporosis Detection**: AI-powered bone density analysis with clinical recommendations
+- **Problem Type Selection**: User-selectable analysis modes (Chest, Fracture, Osteoporosis)
 - **Confidence Scoring**: Each prediction includes confidence percentage
-- **Professional Reports**: Detailed analysis results
+- **Professional Reports**: Detailed medical analysis with specialized recommendations
 
 ## 📋 Requirements
 
 - Python 3.8+
 - PyTorch 2.4.1+
+- TensorFlow 2.17.0+
 - Flask 3.0.0
 - See `requirements.txt` for complete list
 

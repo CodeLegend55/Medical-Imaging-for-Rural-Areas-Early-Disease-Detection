@@ -213,7 +213,7 @@
 
         .radio-group {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 15px;
         }
 
@@ -264,6 +264,12 @@
         @media (max-width: 768px) {
             .radio-group {
                 grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .radio-group {
+                grid-template-columns: 1fr 1fr;
             }
         }
 
@@ -471,6 +477,13 @@
                             <span class="radio-label">
                                 🦴 <strong>Fracture Detection</strong>
                                 <br><small>Bone fracture identification using specialized models</small>
+                            </span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="problemType" value="osteoporosis">
+                            <span class="radio-label">
+                                🦴 <strong>Osteoporosis Detection</strong>
+                                <br><small>Bone density analysis for osteoporosis screening</small>
                             </span>
                         </label>
                     </div>

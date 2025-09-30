@@ -236,6 +236,7 @@ class MedicalImagingModel:
         if TENSORFLOW_AVAILABLE:
             tensorflow_model_files = {
                 'Fracture_Model': 'models/fracture_classification_model.h5',
+                'Osteoporosis_Model': 'models/Osteoporosis_Model.h5',
             }
             
             for model_key, model_path in tensorflow_model_files.items():
@@ -348,6 +349,26 @@ class MedicalImagingModel:
                         }
                     }
             
+            # Osteoporosis detection
+            if 'Osteoporosis_Model' in self.tensorflow_models:
+                image_array = preprocess_for_tensorflow(image_path)
+                if image_array is not None:
+                    osteo_pred = self.tensorflow_models['Osteoporosis_Model'].predict(image_array, verbose=0)
+                    
+                    # Assuming binary classification for osteoporosis
+                    osteo_prob = osteo_pred[0][0] if len(osteo_pred[0]) == 1 else np.max(osteo_pred[0])
+                    osteo_class = "OSTEOPOROSIS" if osteo_prob > 0.5 else "NORMAL"
+                    osteo_confidence = osteo_prob * 100 if osteo_class == "OSTEOPOROSIS" else (1 - osteo_prob) * 100
+                    
+                    predictions['Osteoporosis_Model'] = {
+                        'class': osteo_class,
+                        'confidence': round(osteo_confidence, 2),
+                        'probabilities': {
+                            'OSTEOPOROSIS': round(osteo_prob * 100, 2),
+                            'NORMAL': round((1 - osteo_prob) * 100, 2)
+                        }
+                    }
+            
             return predictions, None
             
         except Exception as e:
@@ -420,6 +441,27 @@ class MedicalImagingModel:
                 all_predictions.update(tensorflow_preds)
                 routing_info['models_used'].extend(list(tensorflow_preds.keys()))
         
+        elif user_problem_type == 'osteoporosis':
+            # For osteoporosis detection, use TensorFlow osteoporosis model
+            tensorflow_preds, tensorflow_error = self.predict_tensorflow_models(image_path)
+            if tensorflow_error:
+                errors.append(f"Osteoporosis detection models: {tensorflow_error}")
+            else:
+                # Filter to only osteoporosis predictions
+                osteo_preds = {k: v for k, v in tensorflow_preds.items() if 'Osteoporosis' in k}
+                if osteo_preds:
+                    all_predictions.update(osteo_preds)
+                    routing_info['models_used'] = list(osteo_preds.keys())
+                    
+                    # Set the best model for osteoporosis (should be only one)
+                    for model_name, prediction in osteo_preds.items():
+                        routing_info['best_model'] = {
+                            'name': model_name,
+                            'prediction': prediction
+                        }
+                else:
+                    errors.append("No osteoporosis models available in TensorFlow predictions")
+        
         if not all_predictions:
             return None, "; ".join(errors) if errors else "No appropriate models available", None
         
@@ -449,7 +491,7 @@ def generate_openai_report(predictions, ensemble_result, routing_info=None):
     As a medical AI assistant, generate a structured medical report based on X-ray analysis results.
     
     Problem Type: {problem_type.upper()} Detection
-    Analysis Approach: {"Chest condition models" if problem_type == 'chest' else "Specialized fracture detection models"}
+    Analysis Approach: {"Chest condition models" if problem_type == 'chest' else "Specialized fracture detection models" if problem_type == 'fracture' else "Osteoporosis detection model"}
     
     Analysis Results:
     - Primary Diagnosis: {ensemble_result['diagnosis']}
@@ -480,7 +522,7 @@ def generate_openai_report(predictions, ensemble_result, routing_info=None):
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": f"You are a medical AI assistant helping to interpret {'chest condition' if problem_type == 'chest' else 'fracture detection'} analysis results. Provide professional, accurate, and helpful medical reports while emphasizing the need for professional medical consultation."},
+            {"role": "system", "content": f"You are a medical AI assistant helping to interpret {'chest condition' if problem_type == 'chest' else 'fracture detection' if problem_type == 'fracture' else 'osteoporosis detection'} analysis results. Provide professional, accurate, and helpful medical reports while emphasizing the need for professional medical consultation."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=800,
@@ -597,7 +639,11 @@ Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 IMAGE ANALYSIS DETAILS:
 Problem Type: {problem_type.upper()} Detection (User Selected)
-Analysis Method: {"Chest condition-specific models" if problem_type == 'chest' else "Fracture detection specialized models"}"""
+Analysis Method: {
+    "Chest condition-specific models" if problem_type == 'chest' 
+    else "Fracture detection specialized models" if problem_type == 'fracture'
+    else "Osteoporosis detection specialized models"
+}"""
 
     if routing_info:
         report += f"""
@@ -610,7 +656,11 @@ Best Performing Model: {best_model['name']} ({best_model['prediction']['confiden
     report += f"""
 
 CLINICAL FINDINGS:
-Based on AI analysis using user-selected {'chest condition specialized' if problem_type == 'chest' else 'fracture detection specialized'} deep learning models.
+Based on AI analysis using user-selected {
+    'chest condition specialized' if problem_type == 'chest' 
+    else 'fracture detection specialized' if problem_type == 'fracture'
+    else 'osteoporosis detection specialized'
+} deep learning models.
 
 PRIMARY DIAGNOSTIC IMPRESSION:
 Main Finding: {diagnosis}
@@ -675,7 +725,7 @@ RECOMMENDATIONS FOR NORMAL CHEST FINDINGS:
 • Routine follow-up as clinically indicated
 • Continue regular health monitoring"""
     
-    else:  # Fracture detection
+    elif problem_type == 'fracture':  # Fracture detection
         if diagnosis == 'FRACTURED':
             report += """
 
@@ -693,6 +743,27 @@ RECOMMENDATIONS FOR BONE ANALYSIS:
 • No acute bone fracture detected on current imaging
 • Clinical correlation with symptoms advised
 • Follow-up as clinically indicated"""
+    
+    else:  # Osteoporosis detection
+        if diagnosis == 'OSTEOPOROSIS':
+            report += """
+
+RECOMMENDATIONS FOR OSTEOPOROSIS FINDING:
+• Endocrinology or orthopedic consultation recommended
+• DEXA scan may be needed for bone density confirmation
+• Assess fall risk and implement safety measures
+• Consider calcium and vitamin D supplementation
+• Evaluate for underlying metabolic bone disorders
+• Review medications that may affect bone density"""
+            
+        else:  # Normal bone density findings
+            report += """
+
+RECOMMENDATIONS FOR BONE DENSITY ANALYSIS:
+• No significant osteoporotic changes detected on current imaging
+• Continue routine bone health monitoring as age-appropriate
+• Maintain adequate calcium and vitamin D intake
+• Regular weight-bearing exercise recommended"""
     
     # Secondary findings recommendations
     if secondary_findings:
@@ -720,12 +791,12 @@ IMPORTANT MEDICAL DISCLAIMERS:
 ⚠️ Results should not replace professional medical diagnosis or clinical judgment.
 ⚠️ Always consult with qualified healthcare professionals for final diagnosis and treatment decisions.
 ⚠️ Clinical correlation with patient symptoms, history, and physical examination is essential.
-⚠️ This {'chest condition' if problem_type == 'chest' else 'fracture detection'} analysis tool assists healthcare providers but cannot replace expert medical interpretation.
+⚠️ This {'chest condition' if problem_type == 'chest' else 'fracture detection' if problem_type == 'fracture' else 'osteoporosis detection'} analysis tool assists healthcare providers but cannot replace expert medical interpretation.
 ⚠️ In case of emergency or acute symptoms, seek immediate medical attention regardless of AI analysis results.
 
 TECHNICAL NOTES:
 • Problem type selected by user: {problem_type.upper()}
-• Analysis performed using {'chest condition specialized models' if problem_type == 'chest' else 'fracture detection specialized models'}"""
+• Analysis performed using {'chest condition specialized models' if problem_type == 'chest' else 'fracture detection specialized models' if problem_type == 'fracture' else 'osteoporosis detection specialized models'}"""
 
     if problem_type == 'chest':
         report += """
@@ -738,7 +809,7 @@ TECHNICAL NOTES:
 • Confidence levels reflect model certainty and should be interpreted within clinical context
 • Model selection based on user problem type specification
 
-Disclaimer: This automated analysis uses specialized AI models trained on medical imaging data. The {'chest condition' if problem_type == 'chest' else 'fracture detection'} models are optimized for their respective domains based on user selection. Results should be interpreted by qualified medical professionals in conjunction with clinical findings and patient presentation.
+Disclaimer: This automated analysis uses specialized AI models trained on medical imaging data. The {'chest condition' if problem_type == 'chest' else 'fracture detection' if problem_type == 'fracture' else 'osteoporosis detection'} models are optimized for their respective domains based on user selection. Results should be interpreted by qualified medical professionals in conjunction with clinical findings and patient presentation.
 """
     
     return report
@@ -761,8 +832,8 @@ def upload_file():
     
     # Get user-selected problem type
     user_problem_type = request.form.get('problem_type', 'chest')  # Default to chest if not specified
-    if user_problem_type not in ['chest', 'fracture']:
-        return jsonify({'error': 'Invalid problem type. Must be "chest" or "fracture"'}), 400
+    if user_problem_type not in ['chest', 'fracture', 'osteoporosis']:
+        return jsonify({'error': 'Invalid problem type. Must be "chest", "fracture", or "osteoporosis"'}), 400
     
     if file and allowed_file(file.filename):
         try:

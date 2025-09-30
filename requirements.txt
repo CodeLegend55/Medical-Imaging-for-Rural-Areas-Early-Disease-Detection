@@ -2,12 +2,12 @@
 Flask==3.0.0
 Werkzeug==3.0.1
 
-# PyTorch and Deep Learning (Updated to available versions)
+# PyTorch and Deep Learning (for chest X-ray and fracture detection)
 torch==2.4.1
 torchvision==0.19.1
 torchaudio==2.4.1
 
-# TensorFlow and Keras (for fracture and osteoporosis models)
+# TensorFlow and Keras (for osteoporosis detection models)
 tensorflow==2.17.0
 keras==3.5.0
 

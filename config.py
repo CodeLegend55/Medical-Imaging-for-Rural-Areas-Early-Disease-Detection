@@ -18,6 +18,9 @@ CLASSES = ["COVID19", "NORMAL", "PNEUMONIA", "TURBERCULOSIS"]
 # Fracture Model Classes
 FRACTURE_CLASSES = ["NON_FRACTURED", "FRACTURED"]
 
+# Osteoporosis Model Classes
+OSTEOPOROSIS_CLASSES = ["NORMAL", "OSTEOPOROSIS"]
+
 # Server Configuration
 DEBUG = True
 HOST = "0.0.0.0"
