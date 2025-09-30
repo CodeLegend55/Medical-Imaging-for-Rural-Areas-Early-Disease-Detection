@@ -253,9 +253,12 @@ class MedicalImagingModel:
             print("⚠️ TensorFlow not available, skipping additional TensorFlow models")
     
     def predict_pytorch_models(self, image_path):
-        """Make predictions using PyTorch models for chest conditions"""
-        if not self.pytorch_models:
-            return {}, "No PyTorch models loaded"
+        """Make predictions using PyTorch models for chest conditions ONLY"""
+        # Filter to only chest models (exclude fracture models)
+        chest_models = {k: v for k, v in self.pytorch_models.items() if 'Fracture_' not in k}
+        
+        if not chest_models:
+            return {}, "No chest PyTorch models loaded"
         
         try:
             # Load and preprocess image for PyTorch
@@ -265,19 +268,35 @@ class MedicalImagingModel:
             predictions = {}
             
             with torch.no_grad():
-                for model_name, model in self.pytorch_models.items():
+                for model_name, model in chest_models.items():
                     outputs = model(input_tensor)
                     probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
                     
+                    # Debug info
+                    print(f"Model {model_name}: probabilities shape = {probabilities.shape}, len(CLASSES) = {len(CLASSES)}")
+                    print(f"probabilities = {probabilities}")
+                    
                     # Get prediction results
                     predicted_class_idx = torch.argmax(probabilities).item()
-                    predicted_class = CLASSES[predicted_class_idx]
-                    confidence = probabilities[predicted_class_idx].item() * 100
+                    
+                    # Safety check for index bounds
+                    if predicted_class_idx >= len(CLASSES):
+                        print(f"⚠️ Error: predicted_class_idx {predicted_class_idx} is out of bounds for CLASSES (length {len(CLASSES)})")
+                        predicted_class = "UNKNOWN"
+                        confidence = 0.0
+                    else:
+                        predicted_class = CLASSES[predicted_class_idx]
+                        confidence = probabilities[predicted_class_idx].item() * 100
+                    
+                    # Create probabilities dict with safety check
+                    prob_dict = {}
+                    for i in range(min(len(CLASSES), len(probabilities))):
+                        prob_dict[CLASSES[i]] = round(probabilities[i].item() * 100, 2)
                     
                     predictions[model_name] = {
                         'class': predicted_class,
                         'confidence': round(confidence, 2),
-                        'probabilities': {CLASSES[i]: round(probabilities[i].item() * 100, 2) for i in range(len(CLASSES))}
+                        'probabilities': prob_dict
                     }
             
             return predictions, None
@@ -383,33 +402,28 @@ class MedicalImagingModel:
         routing_info = {'problem_type': user_problem_type, 'models_used': [], 'selection_method': 'user'}
         
         if user_problem_type == 'chest':
-            # For chest conditions, use chest X-ray PyTorch models
-            chest_models = {k: v for k, v in self.pytorch_models.items() if 'Fracture_' not in k}
-            
-            if chest_models:
-                pytorch_preds, pytorch_error = self.predict_pytorch_models(image_path)
-                if pytorch_error:
-                    errors.append(f"Chest condition models: {pytorch_error}")
-                else:
-                    all_predictions.update(pytorch_preds)
-                    routing_info['models_used'] = list(pytorch_preds.keys())
-                    
-                    # Find the most confident model for chest conditions
-                    best_model = None
-                    best_confidence = 0
-                    
-                    for model_name, prediction in pytorch_preds.items():
-                        if prediction['confidence'] > best_confidence:
-                            best_confidence = prediction['confidence']
-                            best_model = model_name
-                    
-                    if best_model:
-                        routing_info['best_model'] = {
-                            'name': best_model,
-                            'prediction': pytorch_preds[best_model]
-                        }
+            # For chest conditions, use ONLY chest X-ray PyTorch models (ResNet50, DenseNet121, EfficientNetB0)
+            pytorch_preds, pytorch_error = self.predict_pytorch_models(image_path)
+            if pytorch_error:
+                errors.append(f"Chest condition models: {pytorch_error}")
             else:
-                errors.append("No chest condition models loaded")
+                all_predictions.update(pytorch_preds)
+                routing_info['models_used'] = list(pytorch_preds.keys())
+                
+                # Find the most confident model for chest conditions
+                best_model = None
+                best_confidence = 0
+                
+                for model_name, prediction in pytorch_preds.items():
+                    if prediction['confidence'] > best_confidence:
+                        best_confidence = prediction['confidence']
+                        best_model = model_name
+                
+                if best_model:
+                    routing_info['best_model'] = {
+                        'name': best_model,
+                        'prediction': pytorch_preds[best_model]
+                    }
         
         elif user_problem_type == 'fracture':
             # For fracture detection, use fracture-specific PyTorch models
@@ -434,12 +448,6 @@ class MedicalImagingModel:
                         'name': best_model,
                         'prediction': fracture_preds[best_model]
                     }
-            
-            # Also try legacy TensorFlow models if available
-            tensorflow_preds, tensorflow_error = self.predict_tensorflow_models(image_path)
-            if not tensorflow_error and tensorflow_preds:
-                all_predictions.update(tensorflow_preds)
-                routing_info['models_used'].extend(list(tensorflow_preds.keys()))
         
         elif user_problem_type == 'osteoporosis':
             # For osteoporosis detection, use TensorFlow osteoporosis model
