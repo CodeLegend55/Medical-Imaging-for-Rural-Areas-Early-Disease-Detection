@@ -449,7 +449,7 @@
     <div class="container">
         <div class="header">
             <h1>🏥 Medical Imaging AI System</h1>
-            <p>Advanced X-ray analysis with user-selectable problem detection for chest conditions and fracture diagnosis</p>
+            <p>Advanced X-ray analysis with ensemble AI models for chest conditions, fracture detection, and osteoporosis screening</p>
         </div>
 
         <div class="main-content">
@@ -499,8 +499,8 @@
 
             <div class="loading" id="loading">
                 <div class="loading-spinner"></div>
-                <p>Analyzing image with selected problem detection models...</p>
-                <p><small>Processing with appropriate AI models</small></p>
+                <p>Analyzing image with ensemble AI models...</p>
+                <p><small>Processing with 3 specialized models for accurate diagnosis</small></p>
             </div>
 
             <div class="results" id="results">
@@ -686,11 +686,14 @@
             problemTypeIndicator.style.opacity = '0.9';
             
             if (problemType === 'chest') {
-                problemTypeIndicator.innerHTML = `🫁 <strong>Chest Condition Detection</strong> - Using specialized respiratory disease models`;
+                problemTypeIndicator.innerHTML = `🫁 <strong>Chest Condition Detection</strong> - Using 3 PyTorch ensemble models`;
                 problemTypeIndicator.style.background = 'rgba(52, 152, 219, 0.2)';
             } else if (problemType === 'fracture') {
-                problemTypeIndicator.innerHTML = `🦴 <strong>Fracture Detection</strong> - Using specialized bone fracture models`;
+                problemTypeIndicator.innerHTML = `🦴 <strong>Fracture Detection</strong> - Using 3 PyTorch ensemble models`;
                 problemTypeIndicator.style.background = 'rgba(230, 126, 34, 0.2)';
+            } else if (problemType === 'osteoporosis') {
+                problemTypeIndicator.innerHTML = `🦴 <strong>Osteoporosis Detection</strong> - Using 3 PyTorch ensemble models`;
+                problemTypeIndicator.style.background = 'rgba(155, 89, 182, 0.2)';
             }
             
             problemTypeIndicator.style.padding = '10px 15px';
@@ -726,7 +729,8 @@
                 'TURBERCULOSIS': '#9b59b6',
                 'NORMAL': '#27ae60',
                 'FRACTURED': '#e67e22',
-                'NON_FRACTURED': '#27ae60'
+                'NON_FRACTURED': '#27ae60',
+                'OSTEOPOROSIS': '#9b59b6'
             };
             
             const primaryColor = diagnosisColors[data.ensemble.diagnosis] || '#8e44ad';
@@ -775,6 +779,10 @@
                     cardClass += ' fracture-model';
                     const modelType = modelName.split('_')[1]; // Extract ResNet50, DenseNet121, etc.
                     modelDisplayName = `🦴 ${modelType} (Fracture)`;
+                } else if (modelName.includes('Osteoporosis_')) {
+                    cardClass += ' osteoporosis-model';
+                    const modelType = modelName.split('_')[1]; // Extract ResNet50, DenseNet121, etc.
+                    modelDisplayName = `🦴 ${modelType} (Osteoporosis)`;
                 } else if (modelName.includes('Legacy_Fracture')) {
                     cardClass += ' fracture-model';
                     modelDisplayName = '🦴 Legacy Fracture Model';

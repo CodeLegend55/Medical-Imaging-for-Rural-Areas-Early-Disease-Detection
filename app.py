@@ -113,6 +113,93 @@ class FractureEfficientNetB0(nn.Module):
     def forward(self, x):
         return self.backbone(x)
 
+# Osteoporosis Detection Model Classes (from osteoporosis_detection_training.ipynb)
+class OsteoporosisResNet50(nn.Module):
+    def __init__(self, num_classes=2):
+        super(OsteoporosisResNet50, self).__init__()
+        self.backbone = models.resnet50(weights=None)
+        
+        # Freeze early layers
+        for param in list(self.backbone.parameters())[:-25]:
+            param.requires_grad = False
+        
+        # Replace the final layer
+        self.backbone.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(self.backbone.fc.in_features, 512),
+            nn.ReLU(),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+    
+    def forward(self, x):
+        return self.backbone(x)
+
+class OsteoporosisDenseNet121(nn.Module):
+    def __init__(self, num_classes=2):
+        super(OsteoporosisDenseNet121, self).__init__()
+        self.backbone = models.densenet121(weights=None)
+        
+        # Freeze early layers
+        for param in list(self.backbone.parameters())[:-25]:
+            param.requires_grad = False
+        
+        # Replace the final layer
+        self.backbone.classifier = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(self.backbone.classifier.in_features, 512),
+            nn.ReLU(),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_classes)
+        )
+    
+    def forward(self, x):
+        return self.backbone(x)
+
+class OsteoporosisEfficientNetB0(nn.Module):
+    def __init__(self, num_classes=2):
+        super(OsteoporosisEfficientNetB0, self).__init__()
+        try:
+            from efficientnet_pytorch import EfficientNet
+            self.backbone = EfficientNet.from_pretrained('efficientnet-b0', num_classes=1000)
+            
+            # Freeze early layers
+            for param in list(self.backbone.parameters())[:-25]:
+                param.requires_grad = False
+            
+            # Replace the final layer for osteoporosis detection
+            self.backbone._fc = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(self.backbone._fc.in_features, 512),
+                nn.ReLU(),
+                nn.BatchNorm1d(512),
+                nn.Dropout(0.3),
+                nn.Linear(512, num_classes)
+            )
+            
+        except ImportError:
+            # Fallback to torchvision EfficientNet if efficientnet-pytorch is not available
+            self.backbone = models.efficientnet_b0(weights=None)
+            
+            # Freeze early layers
+            for param in list(self.backbone.parameters())[:-25]:
+                param.requires_grad = False
+            
+            # Replace the final layer
+            self.backbone.classifier[1] = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(self.backbone.classifier[1].in_features, 512),
+                nn.ReLU(),
+                nn.BatchNorm1d(512),
+                nn.Dropout(0.3),
+                nn.Linear(512, num_classes)
+            )
+    
+    def forward(self, x):
+        return self.backbone(x)
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
@@ -192,6 +279,13 @@ class MedicalImagingModel:
             'Fracture_EfficientNetB0': 'models/fracture_efficientnetb0.pth'
         }
         
+        # PyTorch osteoporosis detection models
+        pytorch_osteoporosis_model_files = {
+            'Osteoporosis_ResNet50': 'models/osteoporosis_resnet50.pth',
+            'Osteoporosis_DenseNet121': 'models/osteoporosis_densenet121.pth',
+            'Osteoporosis_EfficientNetB0': 'models/osteoporosis_efficientnetb0.pth'
+        }
+        
         # Load PyTorch chest X-ray models
         for model_key, model_path in pytorch_model_files.items():
             if os.path.exists(model_path):
@@ -232,11 +326,37 @@ class MedicalImagingModel:
             else:
                 print(f"✗ PyTorch fracture model file not found: {model_path}")
         
-        # TensorFlow models for other conditions (if any)
+        # Load PyTorch osteoporosis detection models
+        for model_key, model_path in pytorch_osteoporosis_model_files.items():
+            if os.path.exists(model_path):
+                try:
+                    # Create osteoporosis detection model (binary classification)
+                    # These models match the architecture from osteoporosis_detection_training.ipynb
+                    if 'ResNet50' in model_key:
+                        model = OsteoporosisResNet50()
+                    elif 'DenseNet121' in model_key:
+                        model = OsteoporosisDenseNet121()
+                    elif 'EfficientNetB0' in model_key:
+                        model = OsteoporosisEfficientNetB0()
+                    else:
+                        continue
+                    
+                    model.load_state_dict(torch.load(model_path, map_location=self.device))
+                    model.to(self.device)
+                    model.eval()
+                    self.pytorch_models[model_key] = model
+                    print(f"✓ Loaded PyTorch osteoporosis {model_key}")
+                except Exception as e:
+                    print(f"✗ Error loading PyTorch osteoporosis {model_key}: {e}")
+            else:
+                print(f"✗ PyTorch osteoporosis model file not found: {model_path}")
+        
+        # TensorFlow models for legacy support (optional)
+        # Note: Osteoporosis now uses PyTorch models only
         if TENSORFLOW_AVAILABLE:
             tensorflow_model_files = {
                 'Fracture_Model': 'models/fracture_classification_model.h5',
-                'Osteoporosis_Model': 'models/Osteoporosis_Model.h5',
+                # 'Osteoporosis_Model': 'models/Osteoporosis_Model.h5',  # Deprecated - now using PyTorch
             }
             
             for model_key, model_path in tensorflow_model_files.items():
@@ -254,8 +374,8 @@ class MedicalImagingModel:
     
     def predict_pytorch_models(self, image_path):
         """Make predictions using PyTorch models for chest conditions ONLY"""
-        # Filter to only chest models (exclude fracture models)
-        chest_models = {k: v for k, v in self.pytorch_models.items() if 'Fracture_' not in k}
+        # Filter to only chest models (exclude fracture and osteoporosis models)
+        chest_models = {k: v for k, v in self.pytorch_models.items() if 'Fracture_' not in k and 'Osteoporosis_' not in k}
         
         if not chest_models:
             return {}, "No chest PyTorch models loaded"
@@ -339,6 +459,42 @@ class MedicalImagingModel:
             
         except Exception as e:
             return {}, f"Error during fracture prediction: {str(e)}"
+    
+    def predict_osteoporosis_models(self, image_path):
+        """Make predictions using PyTorch osteoporosis detection models"""
+        osteoporosis_models = {k: v for k, v in self.pytorch_models.items() if 'Osteoporosis_' in k}
+        
+        if not osteoporosis_models:
+            return {}, "No osteoporosis detection models loaded"
+        
+        try:
+            # Load and preprocess image for PyTorch
+            image = Image.open(image_path).convert('RGB')
+            input_tensor = transform(image).unsqueeze(0).to(self.device)
+            
+            predictions = {}
+            osteoporosis_classes = ['NORMAL', 'OSTEOPOROSIS']
+            
+            with torch.no_grad():
+                for model_name, model in osteoporosis_models.items():
+                    outputs = model(input_tensor)
+                    probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
+                    
+                    # Get prediction results
+                    predicted_class_idx = torch.argmax(probabilities).item()
+                    predicted_class = osteoporosis_classes[predicted_class_idx]
+                    confidence = probabilities[predicted_class_idx].item() * 100
+                    
+                    predictions[model_name] = {
+                        'class': predicted_class,
+                        'confidence': round(confidence, 2),
+                        'probabilities': {osteoporosis_classes[i]: round(probabilities[i].item() * 100, 2) for i in range(len(osteoporosis_classes))}
+                    }
+            
+            return predictions, None
+            
+        except Exception as e:
+            return {}, f"Error during osteoporosis prediction: {str(e)}"
     
     def predict_tensorflow_models(self, image_path):
         """Make predictions using TensorFlow models (if any legacy models exist)"""
@@ -450,25 +606,30 @@ class MedicalImagingModel:
                     }
         
         elif user_problem_type == 'osteoporosis':
-            # For osteoporosis detection, use TensorFlow osteoporosis model
-            tensorflow_preds, tensorflow_error = self.predict_tensorflow_models(image_path)
-            if tensorflow_error:
-                errors.append(f"Osteoporosis detection models: {tensorflow_error}")
+            # For osteoporosis detection, use PyTorch osteoporosis models
+            osteoporosis_preds, osteoporosis_error = self.predict_osteoporosis_models(image_path)
+            if osteoporosis_error:
+                errors.append(f"Osteoporosis detection models: {osteoporosis_error}")
             else:
-                # Filter to only osteoporosis predictions
-                osteo_preds = {k: v for k, v in tensorflow_preds.items() if 'Osteoporosis' in k}
-                if osteo_preds:
-                    all_predictions.update(osteo_preds)
-                    routing_info['models_used'] = list(osteo_preds.keys())
+                if osteoporosis_preds:
+                    all_predictions.update(osteoporosis_preds)
+                    routing_info['models_used'] = list(osteoporosis_preds.keys())
                     
-                    # Set the best model for osteoporosis (should be only one)
-                    for model_name, prediction in osteo_preds.items():
+                    # Find best model based on highest confidence
+                    best_model = None
+                    best_confidence = 0
+                    for model_name, prediction in osteoporosis_preds.items():
+                        if prediction['confidence'] > best_confidence:
+                            best_confidence = prediction['confidence']
+                            best_model = model_name
+                    
+                    if best_model:
                         routing_info['best_model'] = {
-                            'name': model_name,
-                            'prediction': prediction
+                            'name': best_model,
+                            'prediction': osteoporosis_preds[best_model]
                         }
                 else:
-                    errors.append("No osteoporosis models available in TensorFlow predictions")
+                    errors.append("No osteoporosis models available")
         
         if not all_predictions:
             return None, "; ".join(errors) if errors else "No appropriate models available", None
